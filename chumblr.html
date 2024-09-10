@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tumblr Clone</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .post-form {
+            padding: 20px;
+            background-color: #fff;
+            margin: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .post {
+            padding: 20px;
+            background-color: #fff;
+            margin: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .post img {
+            max-width: 100%;
+            margin-top: 10px;
+        }
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+        .post-tag {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button {
+            margin-right: 10px;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #toggleMode {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .dark-mode {
+            background-color: #333;
+            color: #fff;
+        }
+        .dark-mode button {
+            background-color: #444;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+<div class="post-form">
+    <h2>Create a Post</h2>
+    <textarea id="postText" placeholder="What's on your mind?" rows="3"></textarea><br><br>
+    <input type="file" id="imageUpload"><br><br>
+    <input type="text" id="postTag" placeholder="Enter a tag"><br><br>
+    <button id="submitPost">Post</button>
+    <div id="dropZone" style="border: 2px dashed #007bff; padding: 20px; margin-top: 10px;">Drop image here</div>
+</div>
+
+<select id="tagFilter">
+    <option value="all">All</option>
+</select>
+<input type="text" id="searchBar" placeholder="Search posts">
+
+<button id="toggleMode">Toggle Dark Mode</button>
+
+<div id="postsContainer"></div>
+
+<script>
+// Load posts from localStorage on page load
+window.onload = function() {
+    const savedPosts = JSON.parse(localStorage.getItem('posts')) || [];
+    savedPosts.forEach((post, index) => renderPost(post.text, post.image, post.tag, post.likes, index));
+};
+
+// Post submission
+document.getElementById('submitPost').addEventListener('click', function() {
+    const postText = document.getElementById('postText').value;
+    const postTag = document.getElementById('postTag').value;
+    const imageUpload = document.getElementById('imageUpload').files[0];
+
+    if (!postText && !imageUpload) {
+        alert("Please enter a message or upload an image!");
+        return;
+    }
+
+    let imageBase64 = '';
+    if (imageUpload) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            imageBase64 = event.target.result;
+            addAndSavePost(postText, imageBase64, postTag);
+        };
+        reader.readAsDataURL(imageUpload);
+    } else {
+        addAndSavePost(postText, imageBase64, postTag);
+    }
+
+    document.getElementById('postText').value = '';
+    document.getElementById('imageUpload').value = '';
+    document.getElementById('postTag').value = '';
+});
+
+// Save post to localStorage
+function addAndSavePost(text, image, tag) {
+    renderPost(text, image, tag, 0);
+
+    const posts = JSON.parse(localStorage.getItem('posts')) || [];
+    posts.push({ text: text, image: image, tag: tag, likes: 0 });
+    localStorage.setItem('posts', JSON.stringify(posts));
+}
+
+// Render post
+function renderPost(text, image, tag, likes = 0, index = null) {
+    const postContainer = document.createElement('div');
+    postContainer.classList.add('post');
+
+    const postParagraph = document.createElement('p');
+    postParagraph.innerText = text;
+    postContainer.appendChild(postParagraph);
+
+    if (image) {
+        const postImage = document.createElement('img');
+        postImage.src = image;
+        postContainer.appendChild(postImage);
+    }
+
+    const tagParagraph = document.createElement('p');
+    tagParagraph.innerText = `Tag: ${tag}`;
+    tagParagraph.classList.add('post-tag');
+    postContainer.appendChild(tagParagraph);
+
+    const likeButton = document.createElement('button');
+    likeButton.innerText = `Like (${likes})`;
+    likeButton.onclick = function() {
+        likes++;
+        likeButton.innerText = `Like (${likes})`;
+
+        const posts = JSON.parse(localStorage.getItem('posts')) || [];
+        if (index !== null) {
+            posts[index].likes = likes;
+            localStorage.setItem('posts', JSON.stringify(posts));
+        }
+    };
+    postContainer.appendChild(likeButton);
+
+    const editButton = document.createElement('button');
+    editButton.innerText = 'Edit';
+    editButton.onclick = function() {
+        const newText = prompt("Edit your text:", text);
+        const newTag = prompt("Edit your tag:", tag);
+
+        if (newText !== null) {
+            postParagraph.innerText = newText;
+        }
+        if (newTag !== null) {
+            tagParagraph.innerText = `Tag: ${newTag}`;
+        }
+
+        const posts = JSON.parse(localStorage.getItem('posts')) || [];
+        if (index !== null) {
+            posts[index].text = newText || text;
+            posts[index].tag = newTag || tag;
+            localStorage.setItem('posts', JSON.stringify(posts));
+        }
+    };
+    postContainer.appendChild(editButton);
+
+    const deleteButton = document.createElement('button');
+    deleteButton.innerText = 'Delete';
+    deleteButton.onclick = function() {
+        const posts = JSON.parse(localStorage.getItem('posts')) || [];
+        if (index !== null) {
+            posts.splice(index, 1);
+            localStorage.setItem('posts', JSON.stringify(posts));
+            postContainer.remove();
+        }
+    };
+    postContainer.appendChild(deleteButton);
+
+    const commentSection = document.createElement('div');
+    const commentInput = document.createElement('input');
+    commentInput.type = 'text';
+    commentInput.placeholder = 'Add a comment...';
+
+    const commentButton = document.createElement('button');
+    commentButton.innerText = 'Post Comment';
+    commentButton.onclick = function() {
+        const commentText = commentInput.value;
+        if (commentText) {
+            const commentParagraph = document.createElement('p');
+            commentParagraph.innerText = commentText;
+            commentSection.appendChild(commentParagraph);
+
+            const posts = JSON.parse(localStorage.getItem('posts')) || [];
+            if (index !== null) {
+                posts[index].comments = posts[index].comments || [];
+                posts[index].comments.push(commentText);
+                localStorage.setItem('posts', JSON.stringify(posts));
+            }
+            commentInput.value = ''; 
+        }
+    };
+    postContainer.appendChild(commentInput);
+    postContainer.appendChild(commentButton);
+    postContainer.appendChild(commentSection);
+
+    document.getElementById('postsContainer').prepend(postContainer);
+}
+
+// Dark mode toggle
+const toggleModeButton = document.getElementById('toggleMode');
+toggleModeButton.addEventListener('click', function() {
+    document.body.classList.toggle('dark-mode');
+    const currentMode = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+    localStorage.setItem('theme', currentMode);
+});
+</script>
+
+</body>
+</html>
